@@ -64,7 +64,7 @@ pipeline {
 		sh '''
                 docker rm -f ${CONTAINER_NAME} 2>/dev/null || true
 		docker run -d \
-			--name${CONTAINER_NAME} \
+			--name ${CONTAINER_NAME} \
 			-p ${HOST_PORT}:80 \
 			${APP_NAME}:${IMAGE_TAG}
 		'''
