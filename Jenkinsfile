@@ -69,7 +69,7 @@ pipeline {
 			${APP_NAME}:${IMAGE_TAG}
 		'''
 		
-		sh 'dcoker ps'
+		sh 'docker ps'
             }
         }
 
