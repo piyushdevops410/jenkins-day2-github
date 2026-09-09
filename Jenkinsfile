@@ -30,7 +30,7 @@ pipeline {
 		echo 'Docker Check'
 		echo '=========================='
 		
-		sh 'dcoker --version'
+		sh 'docker --version'
 		sh 'docker info --format "{{.ServerVersion}}"'
 	    }
 	}
