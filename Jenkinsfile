@@ -1,10 +1,10 @@
 pipeline {
+
 	agent any
 
 	environment {
-			APP_NAME = 'jenkins-day4-app'
-			DEFAULT_ENV = 'dev'
-	}
+			APP_NAME = 'jenkins-day5-app'
+				}
 	
 	stages {
 		stage('Information') {
@@ -31,6 +31,28 @@ pipeline {
 					sh 'ls -la'
 				}
 		}
+			
+		stage('Credentials Test') {
+					steps {
+						echo '============================'
+						echo  'Credentials Test'
+						echo '============================'			
+						
+						withCredentials([
+							string(
+								credentialsId: 'day5-test-secret'
+								variable: 'MY_SECERT'
+						I
+							)
+						]) {
+							sh '''
+								echo "Credential is available to the Pipeline"
+								echo "secres length:"
+								echo -n "$MY_SECRET" | wc -c
+								'''
+							}
+					}
+		}
 
 		stage('Test') {
 				steps {
@@ -44,23 +66,6 @@ pipeline {
 					echo 'index.html exists - Test Passed!'
 				}
 		}
-		stage('Deploy') {
-				when {
-					expression {
-						params.ENVIRONMENT == 'production'
-					}
-				}
-				steps {
-					echo '==========================='
-					echo 'Production Deploy Stage'
-					echo '==========================='	
-					
-					echo "Deploying ${env.APP_NAME} to ${params.ENVIRONMENT}"
-	
-					echo 'Production deployment simulation successful!'				
-				}
-		}
-	}
 
 	post {
 		always {
