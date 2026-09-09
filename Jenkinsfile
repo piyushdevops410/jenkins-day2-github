@@ -41,8 +41,7 @@ pipeline {
 						withCredentials([
 							string(
 								credentialsId: 'day5-test-secret'
-								variable: 'MY_SECERT'
-						I
+								variable: 'MY_SECRET'
 							)
 						]) {
 							sh '''
