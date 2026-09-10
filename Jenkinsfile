@@ -51,6 +51,15 @@ pipeline {
 			)		
 		]) {
 			sh '''
+				if [ -z "$DOCKER_USER" ]; then
+					echo "ERROR: Docker Hub username is empty"
+					exit 1
+				else
+					echo "Docker Hub username is configured"
+				fi
+				'''
+
+			sh '''
 				echo "$DOCKER_PASS" | docker login \
 				-u "$DOCKER_USER" \
 				--password-stdin
