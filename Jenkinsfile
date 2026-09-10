@@ -5,7 +5,7 @@ pipeline {
     environment {
         IMAGE_NAME = 'devopspiyush0410/jenkins-day9-app'
 	CONTAINER_NAME = 'jenkins-day9-app'
-	HOST_PORT = '8087'
+	HOST_PORT = '8088'
     }
 
     stages {
