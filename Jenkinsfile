@@ -1,12 +1,20 @@
 pipeline {
 
-
     agent any
+	
+    parameters {
+	choice(
+		name: 'ENVIRONMENT'
+		choices: ['dev', 'staging', 'prod'],
+		description: 'Select deployment envirnment'
+	)
+
+    }
 
     environment {
-        IMAGE_NAME = 'devopspiyush0410/jenkins-day9-app'
-	CONTAINER_NAME = 'jenkins-day9-app'
-	HOST_PORT = '8088'
+        APP_NAME = 'jenkins-day10-app'
+	DOCKER_USER = 'devopspiyush0410'
+	IMAGE_TAG = '${BUILD_NUMBER}'
     }
 
     stages {
@@ -14,14 +22,14 @@ pipeline {
         stage('Information') {
             steps {
                 echo '========================================'
-                echo 'Jenkins Day 9 - Docker Image Versioning'
+                echo 'Jenkins Day 10 - Parameters Lab'
                 echo '========================================'
 
-                echo "Build Number: ${BUILD_NUMBER}"
-		echo "Image Name: ${IMAGE_NAME}"
-		echo "Image Tag: ${BUILD_NUMBER}"
+                echo "Application: ${APP_NAME}"
+		echo "ENVIRONMENT: ${params.ENVIRONMENT}"
+		echo "Build Number: ${BUILD_NUMBER}"
                 echo "Container Name: ${CONTAINER_NAME}"
-		echo "Host Port: ${HOST_PORT}"
+		echo "Docker Image: ${DOCKER_USER}/${APP_NAME}:${IMAGE_TAG}"
             }
         }
 
@@ -33,109 +41,115 @@ pipeline {
 
                 sh '''
 			docker build \
-			-t ${IMAGE_NAME}:${BUILD_NUMBER} .
+			-t ${DOCKER_USER}/${APP_NAME}:${IMAGE_TAG} .
 		'''
+	
+		sh 'docker Images | grep jenkins-day10-app'
             }
         }
 
-        stage('Docker Login') {
+        stage('Test') {
             steps {
                 echo '========================================'
-                echo 'Login to Docker Hub'
+                echo 'Testing Application'
                 echo '========================================'
 		
-		withCredentials([
-			usernamePassword(
-				credentialsId: 'dockerHub-Secret',
-				usernameVariable: 'DOCKER_USER',
-				passwordVariable: 'DOCKER_PASS'
-			)		
-		]) {
-			sh '''
-				echo "$DOCKER_PASS" | docker login \
-				-u "$DOCKER_USER" \
-				--password-stdin
-			'''
-		 }
+		sh 'test -f index.html'
+
+		echo "Application Test Passed"
+
             }	
         }
 	
 
-	stage('Push Docker Image') {
+	stage('Deploy DEV') {
+		when {
+			expression { 
+				params.ENVIRONMENT == 'dev'
+			}
+	}
+
 		steps {
-			echo '============================='
-			echo 'Pushing Versioned Docker Image'
-			echo '============================='
-
-			sh '''
-				docker push ${IMAGE_NAME}:${BUILD_NUMBER}
-			'''
-		}
-	}
-
-        stage('Deploy Container') {
-            steps {
-                echo '========================================'
-                echo 'Deploying Docker Container'
-                echo '========================================'
+			echo '========================================'
+		        echo 'Deploying to DEV environment'
+			echo '========================================'
 		
-		sh '''
-                docker rm -f ${CONTAINER_NAME}  || true
+			sh '''
+				docker rm -f jenkins-day10-dev 2> /dev/null  || true
 
-		docker run -d \
-			--name ${CONTAINER_NAME} \
-			-p ${HOST_PORT}:80 \
-			${IMAGE_NAME}:${BUILD_NUMBER}
-
-			docker ps
-		'''
+				docker run -d \
+				--name jenkins-day10-dev \
+				-p 8088:80 \
+			'''
+			echo "DEV deployment completed!"
             }
         }
 
-        stage('Test Container') {
-            steps {
-                echo '========================================'
-                echo 'Testing  Container'
-                echo '========================================'
+        stage('Deploy STAGING') {
+                when {
+                        expression {
+                                params.ENVIRONMENT == 'staging'
+                        }
+        }
 
-                sh 'sleep 3'
-		sh 'curl -f http://localhost:${HOST_PORT}'
-			
-                echo 'Application test passed!'
+                steps {
+                        echo '========================================'
+                        echo 'Deploying to STAGING environment'
+                        echo '========================================'
+
+                        sh '''
+                                docker rm -f jenkins-day10-dev 2> /dev/null  || true
+
+                                docker run -d \
+                                --name jenkins-day10-staging \
+                                -p 8088:80 \
+                        '''
+                        echo "STAGING deployment completed!"
             }
         }
-	
-	stage('Show Docker Images') {
-	    steps{
 
-		echo '========================'
-		echo 'Docker Image Information'
-		echo '========================'
 
-		sh '''
-			docker images | grep jenkins-day9-app || true
-		'''
-	    }
-	}
-   }
+        stage('Deploy PROD') {
+                when {
+                        expression {
+                                params.ENVIRONMENT == 'prod'
+                        }
+        }
+
+                steps {
+                        echo '========================================'
+                        echo 'Deploying to PROD environment'
+                        echo '========================================'
+
+                        sh '''
+                                docker rm -f jenkins-day10-dev 2> /dev/null  || true
+
+                                docker run -d \
+                                --name jenkins-day10-prod \
+                                -p 8088:80 \
+                        '''
+                        echo "PROD deployment completed!"
+            }
+        }
+
+}       
 
     post {
-
+	
+	always { 
+		echo '========================'
+		echo "Pipeline Finished"
+		echo '========================'
+	}
         success {
-		sh 'docker logout || true'
 		echo '==================='
-		echo 'SUCESS'
+		echo 'SUCESS: Day 10 parameterized deployment completed!'
 		echo '==================='
-
-		echo 'Docker image version ${BUILD_NUMBER} pushed successfully!'
-		echo "Container deployed successfully!"	
         }
 
         failure {
-		sh 'docker logout || true'
-
 		echo '============================='	
-		echo 'Jenkins Day 9 Pipeline Failed'
+		echo 'FAILURE: Please checkthe pipeline logs.'
 		echo '============================='
         }
     }
