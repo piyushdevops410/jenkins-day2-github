@@ -3,7 +3,7 @@ pipeline {
     agent any
 
     environment {
-        IMAGE_NAME = 'devopspiyush0410/jenkins-day8-app'
+        IMAGE_NAME = 'devopspiyush0410/jenkins-day9-app'
 	CONTAINER_NAME = 'jenkins-day9-app'
 	HOST_PORT = '8087'
     }
