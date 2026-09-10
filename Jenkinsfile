@@ -45,7 +45,7 @@ pipeline {
 		withCredentials([
 			usernamePassword(
 				credentialsId: 'dockerHub-Secret',
-				usernameVariable: 'Docker_USER',
+				usernameVariable: 'DOCKER_USER',
 				passwordVariable: 'DOCKER_PASS'
 			)		
 		]) {
