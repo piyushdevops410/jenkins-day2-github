@@ -4,8 +4,7 @@ pipeline {
 
     environment {
         IMAGE_NAME = 'devopspiyush0410/jenkins-day8-app'
-	IMAGE_TAG = '1.0'
-	CONTAINER_NAME = 'jenkins-day8-app'
+	CONTAINER_NAME = 'jenkins-day9-app'
 	HOST_PORT = '8087'
     }
 
@@ -14,10 +13,12 @@ pipeline {
         stage('Information') {
             steps {
                 echo '========================================'
-                echo 'Jenkins Day 8 - Docker Deployment'
+                echo 'Jenkins Day 9 - Docker Image Versioning'
                 echo '========================================'
 
-                echo "Image: ${IMAGE_NAME}:${IMAGE_TAG}"
+                echo "Build Number: ${BUILD_NUMBER}"
+		echo "Image Name: ${IMAGE_NAME}"
+		echo "Image Tag: ${BUILD_NUMBER}"
                 echo "Container Name: ${CONTAINER_NAME}"
 		echo "Host Port: ${HOST_PORT}"
             }
@@ -31,7 +32,7 @@ pipeline {
 
                 sh '''
 			docker build \
-			-t ${IMAGE_NAME}:${IMAGE_TAG} .
+			-t ${IMAGE_NAME}:${BUILD_NUMBER} .
 		'''
             }
         }
@@ -50,15 +51,6 @@ pipeline {
 			)		
 		]) {
 			sh '''
-				if [ -z "$DOCKER_USER" ]; then
-					echo "ERROR: Docker Hub username is empty"
-					exit 1
-				else
-					echo "Docker Hub username is configured"
-				fi
-				'''
-
-			sh '''
 				echo "$DOCKER_PASS" | docker login \
 				-u "$DOCKER_USER" \
 				--password-stdin
@@ -68,14 +60,14 @@ pipeline {
         }
 	
 
-	stage('Push Image') {
+	stage('Push Docker Image') {
 		steps {
 			echo '============================='
-			echo 'Pushing Image to Docker Hub'
+			echo 'Pushing Versioned Docker Image'
 			echo '============================='
 
 			sh '''
-				docker push ${IMAGE_NAME}:${IMAGE_TAG}
+				docker push ${IMAGE_NAME}:${BUILD_NUMBER}
 			'''
 		}
 	}
@@ -92,7 +84,7 @@ pipeline {
 		docker run -d \
 			--name ${CONTAINER_NAME} \
 			-p ${HOST_PORT}:80 \
-			${IMAGE_NAME}:${IMAGE_TAG}
+			${IMAGE_NAME}:${BUILD_NUMBER}
 
 			docker ps
 		'''
@@ -111,7 +103,19 @@ pipeline {
                 echo 'Application test passed!'
             }
         }
+	
+	stage('Show Docker Images') {
+	    steps{
 
+		echo '========================'
+		echo 'Docker Image Information'
+		echo '========================'
+
+		sh '''
+			docker images | grep jenkins-day9-app || true
+		'''
+	    }
+	}
    }
 
     post {
@@ -121,12 +125,17 @@ pipeline {
 		echo '==================='
 		echo 'SUCESS'
 		echo '==================='
-		echo 'Docker image pushed and container deployed!'		
+
+		echo 'Docker image version ${BUILD_NUMBER} pushed successfully!'
+		echo "Container deployed successfully!"	
         }
 
         failure {
 		sh 'docker logout || true'
-		echo 'Jenkins Day 8 Pipeline Failed'
+
+		echo '============================='	
+		echo 'Jenkins Day 9 Pipeline Failed'
+		echo '============================='
         }
     }
 }
