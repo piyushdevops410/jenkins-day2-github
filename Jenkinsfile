@@ -3,10 +3,10 @@ pipeline {
     agent any
 
     environment {
-        APP_NAME = 'jenkins-day6-app'
+        IMAGE_NAME = 'devopspiyush0410/jenkins-day8-app'
 	IMAGE_TAG = '1.0'
-	CONTAINER_NAME = 'jenkins-day6-app'
-	HOST_PORT = '8086'
+	CONTAINER_NAME = 'jenkins-day8-app'
+	HOST_PORT = '8087'
     }
 
     stages {
@@ -14,26 +14,14 @@ pipeline {
         stage('Information') {
             steps {
                 echo '========================================'
-                echo 'Jenkins Day 6 - Docker Integration'
+                echo 'Jenkins Day 8 - Docker Deployment'
                 echo '========================================'
 
-                echo "Application: ${env.APP_NAME}"
-                echo "Image Tag: ${env.IMAGE_TAG}"
-                echo "Container Name: ${env.CONTAINER_NAME}"
-		echo "Host Port: ${env.HOST_PORT}"
+                echo "Image: ${IMAGE_NAME}:${IMAGE_TAG}"
+                echo "Container Name: ${CONTAINER_NAME}"
+		echo "Host Port: ${HOST_PORT}"
             }
         }
-
-	stage('Docker Check') {
-	    steps {
-		echo '=========================='
-		echo 'Docker Check'
-		echo '=========================='
-		
-		sh 'docker --version'
-		sh 'docker info --format "{{.ServerVersion}}"'
-	    }
-	}
 
         stage('Build Docker Image') {
             steps {
@@ -41,35 +29,64 @@ pipeline {
                 echo 'Building Docker Image'
                 echo '========================================'
 
-                sh 'docker build -t ${APP_NAME}:${IMAGE_TAG} .'
+                sh '''
+			docker build \
+			-t ${IMAGE_NAME}:${IMAGE_TAG} .
+		'''
             }
         }
 
-        stage('List Docker Image') {
+        stage('Docker Login') {
             steps {
                 echo '========================================'
-                echo 'Docker Image Created'
+                echo 'Login to Docker Hub'
                 echo '========================================'
 		
-		sh 'docker images ${APPNAME}'
-            }
+		withCredentials([
+			usernamePassword(
+				credentialsId: 'dockerhub-creds',
+				usernameVariable: 'Docker_USER',
+				passwordVariable: 'DOCKER_PASS'
+			)		
+		]) {
+			sh '''
+				echo "$DOCKER_PASS" | docker login \
+				-u "$DOCKER_USER" \
+				--password-stdin
+			'''
+		 }
+            }	
         }
+	
 
-        stage('Run Container') {
+	stage('Push Image') {
+		steps {
+			echo '============================='
+			echo 'Pushing Image to Docker Hub'
+			echo '============================='
+
+			sh '''
+				docker push ${IMAGE_NAME}:${IMAGE_TAG}
+			'''
+		}
+	}
+
+        stage('Deploy Container') {
             steps {
                 echo '========================================'
-                echo 'Starting Container'
+                echo 'Deploying Docker Container'
                 echo '========================================'
 		
 		sh '''
-                docker rm -f ${CONTAINER_NAME} 2>/dev/null || true
+                docker rm -f ${CONTAINER_NAME}  || true
+
 		docker run -d \
 			--name ${CONTAINER_NAME} \
 			-p ${HOST_PORT}:80 \
-			${APP_NAME}:${IMAGE_TAG}
+			${IMAGE_NAME}:${IMAGE_TAG}
+
+			docker ps
 		'''
-		
-		sh 'docker ps'
             }
         }
 
@@ -82,38 +99,25 @@ pipeline {
                 sh 'sleep 3'
 		sh 'curl -f http://localhost:${HOST_PORT}'
 			
-                echo 'Container test passed!'
+                echo 'Application test passed!'
             }
         }
 
-	stage('Cleanup') {
-            steps {
-                echo '========================================'
-                echo 'Docker Cleanup'
-                echo '========================================'
-
-                sh 'docker stop ${CONTAINER_NAME} || true'
-                sh 'docker rm ${CONTAINER_NAME} || true'
-
-                echo 'Container Clean Completed!'
-            }
-        }
-    }
+   }
 
     post {
 
-        always {
-            echo '========================================'
-            echo 'Pipeline Finished'
-            echo '========================================'
-        }
-
         success {
-            echo 'SUCCESS: Jenkins + Docker integration Working!'
+		sh 'docker logout || true'
+		echo '==================='
+		echo 'SUCESS'
+		echo '==================='
+		echo 'Docker image pushed and container deployed!'		
         }
 
         failure {
-            echo 'FAILURE: Jenkins + Docker Pipeline Failed!'
+		sh 'docker logout || true'
+		echo 'Jenkins Day 8 Pipeline Failed'
         }
     }
 }
