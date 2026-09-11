@@ -2,17 +2,8 @@ pipeline {
 
     agent any
 	
-    parameters {
-	choice(
-		name: 'ENVIRONMENT',
-		choices: ['dev', 'staging', 'prod'],
-		description: 'Select deployment envirnment'
-	)
-
-    }
-
     environment {
-        APP_NAME = 'jenkins-day10-app'
+        APP_NAME = 'jenkins-day11-app'
 	DOCKER_USER = 'devopspiyush0410'
 	IMAGE_TAG = "${BUILD_NUMBER}"
     }
@@ -22,137 +13,74 @@ pipeline {
         stage('Information') {
             steps {
                 echo '========================================'
-                echo 'Jenkins Day 10 - Parameters Lab'
+                echo 'Jenkins Day 11 - Artifact Lab'
                 echo '========================================'
 
                 echo "Application: ${APP_NAME}"
-		echo "ENVIRONMENT: ${params.ENVIRONMENT}"
 		echo "Build Number: ${BUILD_NUMBER}"
 		echo "Docker Image: ${DOCKER_USER}/${APP_NAME}:${IMAGE_TAG}"
+		echo "Workspace: ${WORKSPACE}"
             }
         }
 
-        stage('Build Docker Image') {
+        stage('Build') {
             steps {
                 echo '========================================'
-                echo 'Building Docker Image'
+                echo 'Building Stage'
                 echo '========================================'
 
                 sh '''
 			docker build \
 			-t ${DOCKER_USER}/${APP_NAME}:${IMAGE_TAG} .
 		'''
-	
-		sh 'docker images | grep jenkins-day10-app'
+		
+		
+		sh 'docker images | grep jenkins-day11-app'
             }
         }
+
+	stage('Create Artifact') {
+	    steps {
+		echo "============================"	  
+		echo "Creating Build Artifact"
+		echo "============================"
+
+		sh '''
+			echo "Application: ${APP_NAME}" > build-info.txt
+			echo "Build Number: ${BUILD_NUMBER}" >> build-info.txt
+			echo "Docker Image: ${DOCKER_USER}/${APP_NAME}:${IMAGE_TAG}" >> build-info.txt
+			echo "Build Date: $(date)" >> build-info.txt
+			echo "Jenkins Workspace: ${WORKSPACE}" >> build-info.txt
+
+		'''
+
+		sh 'cat build-info.txt'
+
+	    }
+	}
 
         stage('Test') {
             steps {
                 echo '========================================'
-                echo 'Testing Application'
+                echo 'Archiving Artifact'
                 echo '========================================'
 		
-		sh 'test -f index.html'
-
-		echo "Application Test Passed"
-
+		archiveArtifacts artifacts: 'build-info.txt', fingerprint: true
+		
+		echo "Artifact archived sucessfully!"
+		
             }	
         }
 	
-
-	stage('Deploy DEV') {
-		when {
-			expression { 
-				params.ENVIRONMENT == 'dev'
-			}
-	}
-
-		steps {
-			echo '========================================'
-		        echo 'Deploying to DEV environment'
-			echo '========================================'
-		
-			sh '''
-				docker rm -f jenkins-day10-dev 2> /dev/null  || true
-
-				docker run -d \
-				--name jenkins-day10-dev \
-				-p 8088:80 \
-				${DOCKER_USER}/${APP_NAME}:${IMAGE_TAG}
-
-			'''
-
-			echo "DEV deployment completed!"
-            }
-        }
-
-        stage('Deploy STAGING') {
-                when {
-                        expression {
-                                params.ENVIRONMENT == 'staging'
-                        }
-        }
-
-                steps {
-                        echo '========================================'
-                        echo 'Deploying to STAGING environment'
-                        echo '========================================'
-
-                        sh '''
-                                docker rm -f jenkins-day10-dev 2> /dev/null  || true
-
-                                docker run -d \
-                                --name jenkins-day10-staging \
-                                -p 8088:80 \
-				${DOCKER_USER}/${APP_NAME}:${IMAGE_TAG}
-				
-                        '''
-
-                        echo "STAGING deployment completed!"
-            }
-        }
-
-
-        stage('Deploy PROD') {
-                when {
-                        expression {
-                                params.ENVIRONMENT == 'prod'
-                        }
-        }
-
-                steps {
-                        echo '========================================'
-                        echo 'Deploying to PROD environment'
-                        echo '========================================'
-
-                        sh '''
-                                docker rm -f jenkins-day10-dev 2> /dev/null  || true
-
-                                docker run -d \
-                                --name jenkins-day10-prod \
-                                -p 8088:80 \
-				${DOCKER_USER}/${APP_NAME}:${IMAGE_TAG}
-
-                        '''
-
-                        echo "PROD deployment completed!"
-            }
-        }
-
 }       
 
     post {
-	
-	always { 
-		echo '========================'
-		echo "Pipeline Finished"
-		echo '========================'
-	}
+
         success {
-		echo '==================='
-		echo 'SUCESS: Day 10 parameterized deployment completed!'
-		echo '==================='
+		echo '===================================='
+		echo "SUCESS:"
+		echo '===================================='
+		echo "Jenkins Day11 Completed Successfully"
         }
 
         failure {
