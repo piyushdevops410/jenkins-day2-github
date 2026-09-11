@@ -4,7 +4,7 @@ pipeline {
 	
     parameters {
 	choice(
-		name: 'ENVIRONMENT'
+		name: 'ENVIRONMENT',
 		choices: ['dev', 'staging', 'prod'],
 		description: 'Select deployment envirnment'
 	)
@@ -80,7 +80,10 @@ pipeline {
 				docker run -d \
 				--name jenkins-day10-dev \
 				-p 8088:80 \
+				${DOCKER_USER}/${APP_NAME}:${IMAGE_TAG}
+
 			'''
+
 			echo "DEV deployment completed!"
             }
         }
@@ -103,7 +106,10 @@ pipeline {
                                 docker run -d \
                                 --name jenkins-day10-staging \
                                 -p 8088:80 \
+				${DOCKER_USER}/${APP_NAME}:${IMAGE_TAG}
+				
                         '''
+
                         echo "STAGING deployment completed!"
             }
         }
@@ -127,7 +133,10 @@ pipeline {
                                 docker run -d \
                                 --name jenkins-day10-prod \
                                 -p 8088:80 \
+				${DOCKER_USER}/${APP_NAME}:${IMAGE_TAG}
+
                         '''
+
                         echo "PROD deployment completed!"
             }
         }
