@@ -28,7 +28,6 @@ pipeline {
                 echo "Application: ${APP_NAME}"
 		echo "ENVIRONMENT: ${params.ENVIRONMENT}"
 		echo "Build Number: ${BUILD_NUMBER}"
-                echo "Container Name: ${CONTAINER_NAME}"
 		echo "Docker Image: ${DOCKER_USER}/${APP_NAME}:${IMAGE_TAG}"
             }
         }
