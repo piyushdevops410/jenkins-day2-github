@@ -14,7 +14,7 @@ pipeline {
     environment {
         APP_NAME = 'jenkins-day10-app'
 	DOCKER_USER = 'devopspiyush0410'
-	IMAGE_TAG = '${BUILD_NUMBER}'
+	IMAGE_TAG = "${BUILD_NUMBER}"
     }
 
     stages {
