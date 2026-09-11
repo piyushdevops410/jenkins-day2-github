@@ -43,7 +43,7 @@ pipeline {
 			-t ${DOCKER_USER}/${APP_NAME}:${IMAGE_TAG} .
 		'''
 	
-		sh 'docker Images | grep jenkins-day10-app'
+		sh 'docker images | grep jenkins-day10-app'
             }
         }
 
