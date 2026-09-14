@@ -1,4 +1,4 @@
-pipeline {
+\pipeline {
 
     agent any
 
@@ -23,7 +23,7 @@ pipeline {
             steps {
                 withCredentials([
                     [$class: 'AmazonWebServicesCredentialsBinding',
-                     credentialsId: 'aws-creds']
+                     credentialsId: 'jenkins-ecr-user']
                 ]) {
                     sh '''
                         aws ecr get-login-password \
