@@ -23,7 +23,7 @@ pipeline {
             steps {
                 withCredentials([
                     [$class: 'AmazonWebServicesCredentialsBinding',
-                     credentialsId: 'aws-ecr-creds']
+                     credentialsId: 'aws-creds']
                 ]) {
                     sh '''
                         aws ecr get-login-password \
