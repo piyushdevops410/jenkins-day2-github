@@ -1,92 +1,63 @@
 pipeline {
 
     agent any
-	
+
     environment {
-        APP_NAME = 'jenkins-day11-app'
-	DOCKER_USER = 'devopspiyush0410'
-	IMAGE_TAG = "${BUILD_NUMBER}"
+        AWS_REGION = 'us-east-1'
+        ECR_REPOSITORY = 'day8-jenkins-app'
+        AWS_ACCOUNT_ID = '889038136848'
+        ECR_REGISTRY = "${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com"
+        IMAGE_NAME = "${ECR_REGISTRY}/${ECR_REPOSITORY}"
     }
 
     stages {
 
-        stage('Information') {
+        stage('Checkout') {
             steps {
-                echo '========================================'
-                echo 'Jenkins Day 11 - Artifact Lab'
-                echo '========================================'
-
-                echo "Application: ${APP_NAME}"
-		echo "Build Number: ${BUILD_NUMBER}"
-		echo "Docker Image: ${DOCKER_USER}/${APP_NAME}:${IMAGE_TAG}"
-		echo "Workspace: ${WORKSPACE}"
+                echo 'Checking out source code...'
+                checkout scm
             }
         }
 
-        stage('Build') {
+        stage('AWS ECR Login') {
             steps {
-                echo '========================================'
-                echo 'Building Stage'
-                echo '========================================'
+                withCredentials([
+                    [$class: 'AmazonWebServicesCredentialsBinding',
+                     credentialsId: 'aws-ecr-creds']
+                ]) {
+                    sh '''
+                        aws ecr get-login-password \
+                        --region $AWS_REGION | \
+                        docker login \
+                        --username AWS \
+                        --password-stdin $ECR_REGISTRY
+                    '''
+                }
+            }
+        }
 
+        stage('Docker Build') {
+            steps {
                 sh '''
-			docker build \
-			-t ${DOCKER_USER}/${APP_NAME}:${IMAGE_TAG} .
-		'''
-		
-		
-		sh 'docker images | grep jenkins-day11-app'
+                    docker build \
+                    -t $IMAGE_NAME:$BUILD_NUMBER .
+                '''
             }
         }
 
-	stage('Create Artifact') {
-	    steps {
-		echo "============================"	  
-		echo "Creating Build Artifact"
-		echo "============================"
-
-		sh '''
-			echo "Application: ${APP_NAME}" > build-info.txt
-			echo "Build Number: ${BUILD_NUMBER}" >> build-info.txt
-			echo "Docker Image: ${DOCKER_USER}/${APP_NAME}:${IMAGE_TAG}" >> build-info.txt
-			echo "Build Date: $(date)" >> build-info.txt
-			echo "Jenkins Workspace: ${WORKSPACE}" >> build-info.txt
-
-		'''
-
-		sh 'cat build-info.txt'
-
-	    }
-	}
-
-        stage('Test') {
+        stage('Docker Push') {
             steps {
-                echo '========================================'
-                echo 'Archiving Artifact'
-                echo '========================================'
-		
-		archiveArtifacts artifacts: 'build-info.txt', fingerprint: true
-		
-		echo "Artifact archived sucessfully!"
-		
-            }	
-        }
-	
-}       
-
-    post {
-
-        success {
-		echo '===================================='
-		echo "SUCESS:"
-		echo '===================================='
-		echo "Jenkins Day11 Completed Successfully"
+                sh '''
+                    docker push $IMAGE_NAME:$BUILD_NUMBER
+                '''
+            }
         }
 
-        failure {
-		echo '============================='	
-		echo 'FAILURE: Please checkthe pipeline logs.'
-		echo '============================='
+        stage('Success') {
+            steps {
+                echo "Image pushed successfully!"
+                echo "Image: $IMAGE_NAME:$BUILD_NUMBER"
+            }
         }
     }
 }
