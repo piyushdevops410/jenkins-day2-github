@@ -20,5 +20,5 @@ app.get("/health", (req, res) => {
 });
 
 app.listen(PORT, () => {
-    console.log(`Application running on port ${PORT} CICD`);
+    console.log(`Application running on port ${PORT}`);
 });
