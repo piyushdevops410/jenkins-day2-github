@@ -1,0 +1,12 @@
+{
+  "name": "day13-jenkins-app",
+  "version": "1.0.0",
+  "description": "Jenkins Day 13 Complete CI/CD Application",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "express": "^5.1.0"
+  }
+}

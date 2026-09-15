@@ -15,7 +15,7 @@ pipeline {
         // ECR Configuration
         // ==============================
 
-        ECR_REPOSITORY = 'day8-jenkins-app'
+        ECR_REPOSITORY = 'day13-jenkins-app'
 
         ECR_REGISTRY = "${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com"
 
@@ -25,11 +25,11 @@ pipeline {
         // ECS Configuration
         // ==============================
 
-        ECS_CLUSTER = 'day9-jenkins-cluster'
+        ECS_CLUSTER = 'day13-jenkins-cluster'
 
-        ECS_SERVICE = 'day9-jenkins-service'
+        ECS_SERVICE = 'day13-jenkins-service'
 
-        ECS_TASK_FAMILY = 'day9-jenkins-app'
+        ECS_TASK_FAMILY = 'day13-jenkins-app'
     }
 
     stages {
