@@ -35,7 +35,7 @@ pipeline {
 
                 withCredentials([
                     [$class: 'AmazonWebServicesCredentialsBinding',
-                     credentialsId: 'aws-ecr-creds']
+                     credentialsId: 'jenkins-ecr-user']
                 ]) {
 
                     sh '''
