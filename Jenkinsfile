@@ -4,15 +4,26 @@ pipeline {
 
     environment {
 
-        AWS_REGION = 'us-east-1'
+        // ==============================
+        // AWS Configuration
+        // ==============================
 
+        AWS_REGION = 'us-east-1'
         AWS_ACCOUNT_ID = '889038136848'
+
+        // ==============================
+        // ECR Configuration
+        // ==============================
 
         ECR_REPOSITORY = 'day8-jenkins-app'
 
         ECR_REGISTRY = "${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com"
 
         IMAGE_NAME = "${ECR_REGISTRY}/${ECR_REPOSITORY}"
+
+        // ==============================
+        // ECS Configuration
+        // ==============================
 
         ECS_CLUSTER = 'day9-jenkins-cluster'
 
@@ -23,22 +34,38 @@ pipeline {
 
     stages {
 
+        // ==========================================
+        // Stage 1: Checkout
+        // ==========================================
+
         stage('Checkout') {
+
             steps {
+
                 echo 'Checking out source code...'
+
                 checkout scm
             }
         }
 
+        // ==========================================
+        // Stage 2: AWS ECR Login
+        // ==========================================
+
         stage('AWS ECR Login') {
+
             steps {
 
                 withCredentials([
-                    [$class: 'AmazonWebServicesCredentialsBinding',
-                     credentialsId: 'jenkins-ecr-user']
+                    [
+                        $class: 'AmazonWebServicesCredentialsBinding',
+                        credentialsId: 'jenkins-ecr-user'
+                    ]
                 ]) {
 
                     sh '''
+                        echo "Logging in to AWS ECR..."
+
                         aws ecr get-login-password \
                         --region $AWS_REGION | \
                         docker login \
@@ -49,8 +76,15 @@ pipeline {
             }
         }
 
+        // ==========================================
+        // Stage 3: Docker Build
+        // ==========================================
+
         stage('Docker Build') {
+
             steps {
+
+                echo "Building Docker image: $IMAGE_NAME:$BUILD_NUMBER"
 
                 sh '''
                     docker build \
@@ -59,8 +93,15 @@ pipeline {
             }
         }
 
+        // ==========================================
+        // Stage 4: Docker Push
+        // ==========================================
+
         stage('Docker Push') {
+
             steps {
+
+                echo "Pushing Docker image to ECR..."
 
                 sh '''
                     docker push \
@@ -69,24 +110,63 @@ pipeline {
             }
         }
 
+        // ==========================================
+        // Stage 5: Deploy to ECS
+        // ==========================================
+
         stage('Deploy to ECS') {
 
-    steps {
+            steps {
 
-        withCredentials([
-            [$class: 'AmazonWebServicesCredentialsBinding',
-             credentialsId: 'jenkins-ecr-user']
-        ]) {
+                withCredentials([
+                    [
+                        $class: 'AmazonWebServicesCredentialsBinding',
+                        credentialsId: 'jenkins-ecr-user'
+                    ]
+                ]) {
 
-            sh '''
-                echo "Deploying image: $IMAGE_NAME:$BUILD_NUMBER"
+                    sh '''
+                        echo "=========================================="
+                        echo "Starting ECS Deployment"
+                        echo "=========================================="
 
-                aws ecs describe-task-definition \
-                --task-definition $ECS_TASK_FAMILY \
-                --region $AWS_REGION \
-                > task-definition.json
+                        echo "Image:"
+                        echo "$IMAGE_NAME:$BUILD_NUMBER"
 
-                python3 - <<PY
+                        echo "AWS Region:"
+                        echo "$AWS_REGION"
+
+                        echo "ECS Cluster:"
+                        echo "$ECS_CLUSTER"
+
+                        echo "ECS Service:"
+                        echo "$ECS_SERVICE"
+
+                        echo "Task Family:"
+                        echo "$ECS_TASK_FAMILY"
+
+                        echo "=========================================="
+
+                        # ------------------------------------------
+                        # Get Current ECS Task Definition
+                        # ------------------------------------------
+
+                        echo "Getting current ECS task definition..."
+
+                        aws ecs describe-task-definition \
+                        --task-definition $ECS_TASK_FAMILY \
+                        --region $AWS_REGION \
+                        > task-definition.json
+
+                        echo "Current task definition retrieved successfully."
+
+                        # ------------------------------------------
+                        # Create New Task Definition JSON
+                        # ------------------------------------------
+
+                        echo "Creating new task definition..."
+
+                        python3 - <<PY
 import json
 
 with open("task-definition.json") as f:
@@ -94,67 +174,139 @@ with open("task-definition.json") as f:
 
 task = data["taskDefinition"]
 
+# Update Docker image
 task["containerDefinitions"][0]["image"] = "$IMAGE_NAME:$BUILD_NUMBER"
 
+# Create new task definition
 output = {
     "family": task["family"],
-    "taskRoleArn": task.get("taskRoleArn"),
-    "executionRoleArn": task.get("executionRoleArn"),
-    "networkMode": task.get("networkMode"),
+    "executionRoleArn": task["executionRoleArn"],
+    "networkMode": task["networkMode"],
     "containerDefinitions": task["containerDefinitions"],
-    "requiresCompatibilities": task.get("requiresCompatibilities"),
-    "cpu": task.get("cpu"),
-    "memory": task.get("memory")
+    "requiresCompatibilities": task["requiresCompatibilities"],
+    "cpu": task["cpu"],
+    "memory": task["memory"]
 }
 
+# Add taskRoleArn only if it exists
+if task.get("taskRoleArn"):
+    output["taskRoleArn"] = task["taskRoleArn"]
+
+# Save new task definition
 with open("new-task-definition.json", "w") as f:
-    json.dump(output, f)
+    json.dump(output, f, indent=2)
+
+print("New ECS task definition created successfully.")
+print(json.dumps(output, indent=2))
 PY
 
-                echo "Registering new ECS task definition..."
+                        # ------------------------------------------
+                        # Register New Task Definition
+                        # ------------------------------------------
 
-                aws ecs register-task-definition \
-                --cli-input-json file://new-task-definition.json \
-                --region $AWS_REGION \
-                > registered-task.json
+                        echo "=========================================="
+                        echo "Registering new ECS task definition..."
+                        echo "=========================================="
 
-                NEW_TASK_DEFINITION=$(python3 -c \
-                "import json; print(json.load(open('registered-task.json'))['taskDefinition']['taskDefinitionArn'])")
+                        aws ecs register-task-definition \
+                        --cli-input-json file://new-task-definition.json \
+                        --region $AWS_REGION \
+                        > registered-task.json
 
-                echo "New task definition:"
-                echo "$NEW_TASK_DEFINITION"
+                        # ------------------------------------------
+                        # Get New Task Definition ARN
+                        # ------------------------------------------
 
-                echo "Updating ECS service..."
+                        NEW_TASK_DEFINITION=$(python3 -c \
+                        "import json; print(json.load(open('registered-task.json'))['taskDefinition']['taskDefinitionArn'])")
 
-                aws ecs update-service \
-                --cluster $ECS_CLUSTER \
-                --service $ECS_SERVICE \
-                --task-definition $NEW_TASK_DEFINITION \
-                --region $AWS_REGION
+                        echo "New task definition:"
+                        echo "$NEW_TASK_DEFINITION"
 
-                echo "Waiting for ECS service..."
+                        # ------------------------------------------
+                        # Update ECS Service
+                        # ------------------------------------------
 
-                aws ecs wait services-stable \
-                --cluster $ECS_CLUSTER \
-                --services $ECS_SERVICE \
-                --region $AWS_REGION
+                        echo "=========================================="
+                        echo "Updating ECS service..."
+                        echo "=========================================="
 
-                echo "ECS deployment completed successfully!"
-            '''
+                        aws ecs update-service \
+                        --cluster $ECS_CLUSTER \
+                        --service $ECS_SERVICE \
+                        --task-definition $NEW_TASK_DEFINITION \
+                        --region $AWS_REGION
+
+                        echo "ECS service update requested successfully."
+
+                        # ------------------------------------------
+                        # Wait for ECS Service
+                        # ------------------------------------------
+
+                        echo "=========================================="
+                        echo "Waiting for ECS service to become stable..."
+                        echo "=========================================="
+
+                        aws ecs wait services-stable \
+                        --cluster $ECS_CLUSTER \
+                        --services $ECS_SERVICE \
+                        --region $AWS_REGION
+
+                        echo "=========================================="
+                        echo "ECS deployment completed successfully!"
+                        echo "=========================================="
+                    '''
+                }
+            }
         }
-    }
-}
+
+        // ==========================================
+        // Stage 6: Success
+        // ==========================================
 
         stage('Success') {
+
             steps {
 
-                echo "======================================"
+                echo "=========================================="
                 echo "CI/CD DEPLOYMENT SUCCESSFUL"
-                echo "Image: $IMAGE_NAME:$BUILD_NUMBER"
-                echo "ECS Cluster: $ECS_CLUSTER"
-                echo "ECS Service: $ECS_SERVICE"
-                echo "======================================"
+                echo "=========================================="
+
+                echo "Docker Image:"
+                echo "$IMAGE_NAME:$BUILD_NUMBER"
+
+                echo "ECS Cluster:"
+                echo "$ECS_CLUSTER"
+
+                echo "ECS Service:"
+                echo "$ECS_SERVICE"
+
+                echo "Deployment completed successfully!"
+
+                echo "=========================================="
             }
+        }
+    }
+
+    // ==========================================
+    // Post Actions
+    // ==========================================
+
+    post {
+
+        success {
+
+            echo "=========================================="
+            echo "Jenkins Day 9 Pipeline SUCCESS"
+            echo "=========================================="
+        }
+
+        failure {
+
+            echo "=========================================="
+            echo "Jenkins Day 9 Pipeline FAILED"
+            echo "Check the console output for details."
+            echo "=========================================="
         }
     }
 }
