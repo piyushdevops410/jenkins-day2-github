@@ -27,7 +27,7 @@ pipeline {
 
         ECS_CLUSTER = 'day13-jenkins-cluster'
 
-        ECS_SERVICE = 'day13-jenkins-service'
+        ECS_SERVICE = 'day13-jenkins-app-service'
 
         ECS_TASK_FAMILY = 'day13-jenkins-app'
     }
